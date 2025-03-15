@@ -53,11 +53,13 @@ local function get_file_info ()
     if current_git_top_path:find('fatal: not a git repository') then
 	current_git_top_path = " "
      else
-	current_git_top_path = current_git_top_path:gsub("\n", "")
+	current_git_top_path = current_git_top_path:gsub("%s+$", "")
     end
 
     if current_git_remote_url == "" then
 	current_git_remote_url = " "
+    else
+	current_git_remote_url = current_git_remote_url:gsub("%s+$", "")
     end
 
     -- Normalize path seperation between OS
