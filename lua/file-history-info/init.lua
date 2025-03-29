@@ -54,6 +54,30 @@ local function is_substring_found_in_string (main_string, sub_string, case_sensi
 end
 
 
+local function normalize_string_length(string_val, num_char)
+    local final_str
+    if #string_val > num_char then
+	final_str = "..."
+	local truncate_string_index = #string_val - num_char + #final_str
+	for str_index = 1, #string_val do
+	    if str_index > truncate_string_index then
+		local curr_char = string.sub(string_val,str_index,str_index)
+		final_str = final_str .. curr_char
+	    end
+	end
+    else
+	final_str = string_val
+	if #string_val < num_char then
+	    local string_padding_num = num_char - #string_val
+	    for str_index = 1, string_padding_num do
+		final_str = final_str .. " "
+	    end
+	end
+    end
+    return final_str
+end
+
+
 local function update_file_history_list(main_file_history_win, filter_string)
     local data_list = {}
     for _, values in ipairs(ALL_FILE_HISTORY_DATA.data) do
@@ -63,7 +87,9 @@ local function update_file_history_list(main_file_history_win, filter_string)
 		table.insert(data_list, values.CreatedTimestamp .. " | " .. values.RelativeFilePath)
 	    end
 	else
-	    table.insert(data_list, values.CreatedTimestamp .. " | " .. values.RelativeFilePath)
+	    local disp_relative_file_path = normalize_string_length(values.RelativeFilePath, 50)
+	    local disp_current_working_dir = normalize_string_length(values.CurrentWorkingDir, 110)
+	    table.insert(data_list, values.CreatedTimestamp .. " | " .. disp_relative_file_path .. " | " .. disp_current_working_dir .. " |")
 	end
     end
 
@@ -208,7 +234,7 @@ function ret_func.show_file_history(user_settings)
 	    title = 'File History',
 	    relative = "editor",
 	    focusable = true,
-	    width = 80,
+	    width = 190,
 	    height = 32,
 	    row = 5,
 	    col = 10,
@@ -224,10 +250,10 @@ function ret_func.show_file_history(user_settings)
 	    title = 'CWD',
 	    relative = "editor",
 	    focusable = true,
-	    width = 100,
+	    width = 20,
 	    height = 32,
 	    row = 5,
-	    col = 92,
+	    col = 202,
 	    border = 'single',
 	},
 	false
