@@ -109,7 +109,7 @@ local function update_file_history_list(main_file_history_win, filter_string)
             local disp_id = normalize_string_length(tostring(values.Id), 4)
 	    local disp_relative_file_path = normalize_string_length(values.RelativeFilePath, 50)
 	    local disp_current_working_dir = normalize_string_length(values.CurrentWorkingDir, 110)
-	    table.insert(data_list,disp_id .. " | " .. values.CreatedTimestamp .. " | " .. disp_relative_file_path .. " | " .. disp_current_working_dir .. " |")
+	    table.insert(data_list,disp_id .. " | " .. values.CreatedTimestamp .. " | " .. disp_current_working_dir .. " | " .. disp_relative_file_path .. " |")
 	end
     end
 
