@@ -16,6 +16,25 @@ local PYTHON_FILE_GET_FILE_HISTORY = 'get_all_file_history.py'
 local DATA_DB_FILENAME = 'data_storage.db'
 
 
+local function custom_trim(string_input)
+    return (string_input:gsub("^%s*(.-)%s*$", "%1"))
+end
+
+
+local function custom_split_string (string_val, sep, optional_sep)
+    local result_list = {}
+    local regex_pattern = "([^"..sep.."]+)"
+
+    if optional_sep == true then
+	regex_pattern = "([^".. sep .."]*)".. sep .."?"
+    end
+
+    for str in string.gmatch(string_val, regex_pattern ) do
+	table.insert(result_list, str)
+    end
+    return result_list
+end
+
 
 local function escape_pattern(string_val)
     return string_val:gsub("([^%w])", "%%%1")
@@ -87,9 +106,10 @@ local function update_file_history_list(main_file_history_win, filter_string)
 		table.insert(data_list, values.CreatedTimestamp .. " | " .. values.RelativeFilePath)
 	    end
 	else
+            local disp_id = normalize_string_length(tostring(values.Id), 4)
 	    local disp_relative_file_path = normalize_string_length(values.RelativeFilePath, 50)
 	    local disp_current_working_dir = normalize_string_length(values.CurrentWorkingDir, 110)
-	    table.insert(data_list, values.CreatedTimestamp .. " | " .. disp_relative_file_path .. " | " .. disp_current_working_dir .. " |")
+	    table.insert(data_list,disp_id .. " | " .. values.CreatedTimestamp .. " | " .. disp_relative_file_path .. " | " .. disp_current_working_dir .. " |")
 	end
     end
 
@@ -234,7 +254,7 @@ function ret_func.show_file_history(user_settings)
 	    title = 'File History',
 	    relative = "editor",
 	    focusable = true,
-	    width = 190,
+	    width = 200,
 	    height = 32,
 	    row = 5,
 	    col = 10,
@@ -253,7 +273,7 @@ function ret_func.show_file_history(user_settings)
 	    width = 20,
 	    height = 32,
 	    row = 5,
-	    col = 202,
+	    col = 212,
 	    border = 'single',
 	},
 	false
@@ -281,6 +301,24 @@ function ret_func.show_file_history(user_settings)
     for _, value in ipairs(all_floating_window_id) do
 	vim.api.nvim_buf_set_keymap(value.bufnr, 'n', user_settings.exit_note_window, buf_cmd_close_window, {noremap = true, silent = true})
     end
+
+    vim.keymap.set('n', user_settings.open_cwd,
+	function ()
+            local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+            local current_buf_line_str = vim.api.nvim_buf_get_lines(main_file_history_win.bufnr, row-1, row, false)
+            split_str = custom_split_string(current_buf_line_str[1], '|', true)
+            current_id_str = custom_trim(split_str[1])
+            current_selected_id = tonumber(current_id_str)
+            for _, values in ipairs(ALL_FILE_HISTORY_DATA.data) do
+                if values.Id == current_selected_id then
+                    selected_cwd = values.CurrentWorkingDir
+                    break
+                end
+            end
+            vim.api.nvim_set_current_dir(selected_cwd)
+            vim.api.nvim_set_current_win(user_curr_focused_win);
+	end
+    )
 
     check_db_table_exists()
     read_all_file_history(main_file_history_win, user_settings.offset_hour)
