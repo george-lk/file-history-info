@@ -320,6 +320,33 @@ function ret_func.show_file_history(user_settings)
 	end
     )
 
+    vim.keymap.set('n', user_settings.new_tab_cwd,
+	function ()
+            local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+            local current_buf_line_str = vim.api.nvim_buf_get_lines(main_file_history_win.bufnr, row-1, row, false)
+            split_str = custom_split_string(current_buf_line_str[1], '|', true)
+            current_id_str = custom_trim(split_str[1])
+            current_selected_id = tonumber(current_id_str)
+            for _, values in ipairs(ALL_FILE_HISTORY_DATA.data) do
+                if values.Id == current_selected_id then
+                    selected_cwd = values.CurrentWorkingDir
+                    break
+                end
+            end
+
+            local curr_os_name = vim.loop.os_uname().sysname
+            if curr_os_name == 'Windows_NT' then
+                local cmd_to_run = 'wt.exe -w 0 nt -d "' .. selected_cwd .. '" powershell.exe -NoExit -Command "' .. user_settings.editor_cmd_open_current_cwd .. '"'
+                local windows_terminal_new_tab = vim.fn.jobstart(
+                    cmd_to_run,
+                    {
+                        stdout_buffered = true,
+                    }
+                )
+            end
+	end
+    )
+
     check_db_table_exists()
     read_all_file_history(main_file_history_win, user_settings.offset_hour)
 end
