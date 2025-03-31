@@ -267,13 +267,13 @@ function ret_func.show_file_history(user_settings)
     local cwd_win = create_floating_windows(
 	{},
 	{
-	    title = 'CWD',
+	    title = 'CWD filter',
 	    relative = "editor",
 	    focusable = true,
-	    width = 20,
-	    height = 32,
-	    row = 5,
-	    col = 212,
+	    width = 200,
+	    height = 1,
+	    row = 39,
+	    col = 10,
 	    border = 'single',
 	},
 	false
