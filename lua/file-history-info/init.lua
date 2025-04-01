@@ -113,7 +113,16 @@ local function update_file_history_list(main_file_history_win, filter_string)
 	end
     end
 
+    if main_file_history_win.bufnr_read_only == true then
+        vim.api.nvim_buf_set_option(main_file_history_win.bufnr, 'modifiable', true)
+        vim.api.nvim_buf_set_option(main_file_history_win.bufnr, 'readonly', false)
+    end
     vim.api.nvim_buf_set_lines(main_file_history_win.bufnr, 0, -1, false, data_list)
+    if main_file_history_win.bufnr_read_only == true then
+        vim.api.nvim_buf_set_option(main_file_history_win.bufnr, 'modifiable', false)
+        vim.api.nvim_buf_set_option(main_file_history_win.bufnr, 'readonly', true)
+    end
+
 end
 
 
@@ -181,15 +190,21 @@ end
 
 
 
-local function create_floating_windows (input_buffer, opt, should_enter_win)
+local function create_floating_windows (input_buffer, opt, should_enter_win, is_read_only)
     win_buf = vim.api.nvim_create_buf(false, true)
     vim.api.nvim_buf_set_lines(win_buf, 0, - 1, false, input_buffer)
 
+    if is_read_only == true then
+        vim.api.nvim_buf_set_option(win_buf, 'modifiable', false)
+        vim.api.nvim_buf_set_option(win_buf, 'readonly', true)
+    end
+
     vim.cmd "setlocal nocursorcolumn"
     local win_info = {
-	state = 'start',
-	bufnr = win_buf,
-	winnr = vim.api.nvim_open_win(win_buf, should_enter_win, opt)
+        state = 'start',
+        bufnr = win_buf,
+        bufnr_read_only = is_read_only,
+        winnr = vim.api.nvim_open_win(win_buf, should_enter_win, opt)
     }
     vim.api.nvim_win_set_option(win_info.winnr, "winblend", 10)
     vim.api.nvim_win_set_option(win_info.winnr, "cursorline", true)
@@ -249,34 +264,36 @@ function ret_func.show_file_history(user_settings)
     local user_curr_focused_win = vim.fn.win_getid()
 
     local main_file_history_win = create_floating_windows(
-	{},
-	{
-	    title = 'File History',
-	    relative = "editor",
-	    focusable = true,
-	    width = 200,
-	    height = 32,
-	    row = 5,
-	    col = 10,
-	    style = "minimal",
-	    border = 'single',
-	},
-	true
+        {},
+        {
+        title = 'File History',
+        relative = "editor",
+        focusable = true,
+        width = 200,
+        height = 32,
+        row = 5,
+        col = 10,
+        style = "minimal",
+        border = 'single',
+        },
+        true,
+        true
     )
 
     local cwd_win = create_floating_windows(
-	{},
-	{
-	    title = 'CWD filter',
-	    relative = "editor",
-	    focusable = true,
-	    width = 200,
-	    height = 1,
-	    row = 39,
-	    col = 10,
-	    border = 'single',
-	},
-	false
+        {},
+        {
+            title = 'CWD filter',
+            relative = "editor",
+            focusable = true,
+            width = 200,
+            height = 1,
+            row = 39,
+            col = 10,
+            border = 'single',
+        },
+        false,
+        false
     )
 
     local all_floating_window_id = {}
