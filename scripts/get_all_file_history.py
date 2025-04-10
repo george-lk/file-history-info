@@ -16,16 +16,16 @@ cursor = conn.cursor()
 cursor.execute(f'''
     SELECT
         id,
-        strftime("%m-%d-%Y %H:%M:%S", CreatedTimestampInt + ({OFFSET_HOUR} * 3600), 'unixepoch') as CreatedTimestamp,
+        strftime("%d-%m-%Y %H:%M:%S", CreatedTimestampInt + ({OFFSET_HOUR} * 3600), 'unixepoch') as CreatedTimestamp,
         FullFilePath,
         RelativeFilePath,
         CurrentWorkingDir,
         GitTopLevelPath,
         GitRepoRemoteUrl,
-        strftime("%m-%d-%Y %H:%M:%S", LastModifiedTimestampInt, 'unixepoch') as LastModifiedTimestamp
+        strftime("%d-%m-%Y %H:%M:%S", LastModifiedTimestampInt, 'unixepoch') as LastModifiedTimestamp
     FROM FileReadHistory
     WHERE IsDeleted = 0
-    ORDER BY CreatedTimestamp DESC;
+    ORDER BY id DESC;
 '''
 )
 

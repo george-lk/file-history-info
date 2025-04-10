@@ -4,7 +4,6 @@ local ret_func = {}
 local file_info_records_augroup = vim.api.nvim_create_augroup("custom_file_info_augroup", {clear = true})
 ALL_FILE_HISTORY_DATA = {}
 
-
 local OS_FILE_SEP = package.config:sub(1, 1)
 local PYTHON_PATH_SCRIPT = string.sub(debug.getinfo(1).source, 2, string.len('/lua/file-history-info/init.lua') * -1 ) .. 'scripts' .. OS_FILE_SEP
 local DATA_DIR_PATH = string.sub(debug.getinfo(1).source, 2, string.len('/lua/file-history-info/init.lua') * -1 ) .. 'data' .. OS_FILE_SEP
@@ -150,8 +149,11 @@ local function add_new_file_info (full_file_path, relative_file_path, current_wo
     local job_add_new_file_info = vim.fn.jobstart(
 	cmd_to_run,
 	{
-	    stdout_buffered = true,
-	    cwd = PYTHON_PATH_SCRIPT,
+            stdout_buffered = true,
+            cwd = PYTHON_PATH_SCRIPT,
+                on_stdout = function (chanid, data, name)
+                print(vim.inspect(data))
+            end,
 	}
     )
     vim.fn.jobwait({job_add_new_file_info}, -1)
