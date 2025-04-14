@@ -165,11 +165,14 @@ end
 
 local function update_cwd_list_history(main_cwd_history_win)
     local data_list = {}
+    local latest_open_time_str_length = 19
+    local file_open_count_str_length = 3
+    local cwd_str_length = 110
     local current_date_sel = ""
     for _, values in ipairs(CWD_LIST_HISTORY_DATA.data) do
-        local disp_latest_open_time = normalize_string_length(values.LatestOpenTime, 19)
-        local disp_file_open_count = normalize_string_length(tostring(values.FileOpenCount), 3)
-        local disp_current_working_directory = normalize_string_length(values.CurrentWorkingDir, 110)
+        local disp_latest_open_time = normalize_string_length(values.LatestOpenTime, latest_open_time_str_length)
+        local disp_file_open_count = normalize_string_length(tostring(values.FileOpenCount), file_open_count_str_length)
+        local disp_current_working_directory = normalize_string_length(values.CurrentWorkingDir, cwd_str_length)
 
         if values.Date ~= current_date_sel then
             if current_date_sel ~= "" then
@@ -191,6 +194,43 @@ local function update_cwd_list_history(main_cwd_history_win)
     if main_cwd_history_win.bufnr_read_only == true then
         vim.api.nvim_buf_set_option(main_cwd_history_win.bufnr, 'modifiable', false)
         vim.api.nvim_buf_set_option(main_cwd_history_win.bufnr, 'readonly', true)
+    end
+
+    vim.api.nvim_set_hl(0, "custom_cwd_list_history_view_column_latest_open_time", {fg = "#99FF33"})
+    vim.api.nvim_set_hl(0, "custom_cwd_list_history_view_column_file_open_count", {fg = "#3399FF"})
+    vim.api.nvim_set_hl(0, "custom_cwd_list_history_view_column_cwd", {fg = "#f59842"})
+    vim.api.nvim_set_hl(0, "custom_cwd_list_history_view_column_label", {fg = "#c4c4c4"})
+
+    vim.api.nvim_set_hl(0, "custom_cwd_list_history_view_header_date", {fg = "#c4c4c4"})
+
+    local buffer_lines = vim.api.nvim_buf_line_count(main_cwd_history_win.bufnr)
+    local label_str_pos = {
+        start_pos = 0,
+        end_pos = 2,
+    }
+    local latest_open_time_str_pos = {
+        start_pos = 5,
+        end_pos = 5 + latest_open_time_str_length,
+    }
+    local file_open_count_str_pos = {
+        start_pos = 5 + latest_open_time_str_length + 3,
+        end_pos = 5 + latest_open_time_str_length + 3 + file_open_count_str_length,
+    }
+    local cwd_str_pos = {
+        start_pos = 5 + latest_open_time_str_length + 3 + file_open_count_str_length + 3,
+        end_pos = 5 + latest_open_time_str_length + 3 + file_open_count_str_length + 3 + cwd_str_length,
+    }
+
+    for current_line = 0, buffer_lines - 1 do
+        local eval_buf_line_str = vim.api.nvim_buf_get_lines(main_cwd_history_win.bufnr, current_line, current_line + 1, false)
+        if string.sub(eval_buf_line_str[1], 1, 2) == "++" then
+            vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_label", current_line, label_str_pos.start_pos, label_str_pos.end_pos)
+            vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_latest_open_time", current_line, latest_open_time_str_pos.start_pos, latest_open_time_str_pos.end_pos)
+            vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_file_open_count", current_line, file_open_count_str_pos.start_pos, file_open_count_str_pos.end_pos)
+            vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_cwd", current_line, cwd_str_pos.start_pos, cwd_str_pos.end_pos)
+        elseif string.sub(eval_buf_line_str[1], 1, 2) == "--" then
+            vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_header_date", current_line, 0, -1)
+        end
     end
 end
 
