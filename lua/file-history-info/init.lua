@@ -298,7 +298,7 @@ function ret_func.setup_start()
 end
 
 
-function ret_func.show_file_history(user_settings)
+function ret_func.show_all_file_history(user_settings)
     local user_curr_focused_win = vim.fn.win_getid()
 
     local main_file_history_win = create_floating_windows(
