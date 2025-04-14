@@ -3,6 +3,7 @@ local ret_func = {}
 
 local file_info_records_augroup = vim.api.nvim_create_augroup("custom_file_info_augroup", {clear = true})
 ALL_FILE_HISTORY_DATA = {}
+CWD_LIST_HISTORY_DATA = {}
 
 local OS_FILE_SEP = package.config:sub(1, 1)
 local PYTHON_PATH_SCRIPT = string.sub(debug.getinfo(1).source, 2, string.len('/lua/file-history-info/init.lua') * -1 ) .. 'scripts' .. OS_FILE_SEP
@@ -12,6 +13,7 @@ local PYTHON_MAIN_CMD = 'python'
 local PYTHON_FILE_ADD_NEW_FILE_INFO = 'add_new_file_info.py'
 local PYTHON_FILE_CHECK_DB = 'check_db_table.py'
 local PYTHON_FILE_GET_FILE_HISTORY = 'get_all_file_history.py'
+local PYTHON_FILE_GET_CWD_LIST_HISTORY = 'get_cwd_list_history.py'
 local DATA_DB_FILENAME = 'data_storage.db'
 
 
@@ -161,6 +163,38 @@ local function update_file_history_list(main_file_history_win, filter_string)
 end
 
 
+local function update_cwd_list_history(main_cwd_history_win)
+    local data_list = {}
+    local current_date_sel = ""
+    for _, values in ipairs(CWD_LIST_HISTORY_DATA.data) do
+        local disp_latest_open_time = normalize_string_length(values.LatestOpenTime, 19)
+        local disp_file_open_count = normalize_string_length(tostring(values.FileOpenCount), 3)
+        local disp_current_working_directory = normalize_string_length(values.CurrentWorkingDir, 110)
+
+        if values.Date ~= current_date_sel then
+            if current_date_sel ~= "" then
+                table.insert(data_list, "")
+                table.insert(data_list, "")
+            end
+            table.insert(data_list, "-- " .. values.Date)
+            current_date_sel = values.Date
+        end
+
+        table.insert(data_list, "++ | " .. disp_latest_open_time .. " | " .. disp_file_open_count .. " | " .. disp_current_working_directory)
+    end
+
+    if main_cwd_history_win.bufnr_read_only == true then
+        vim.api.nvim_buf_set_option(main_cwd_history_win.bufnr, 'modifiable', true)
+        vim.api.nvim_buf_set_option(main_cwd_history_win.bufnr, 'readonly', false)
+    end
+    vim.api.nvim_buf_set_lines(main_cwd_history_win.bufnr, 0, -1, false, data_list)
+    if main_cwd_history_win.bufnr_read_only == true then
+        vim.api.nvim_buf_set_option(main_cwd_history_win.bufnr, 'modifiable', false)
+        vim.api.nvim_buf_set_option(main_cwd_history_win.bufnr, 'readonly', true)
+    end
+end
+
+
 local function read_all_file_history (main_file_history_win, offset_hour)
     local cmd_to_run = ' ' .. PYTHON_MAIN_CMD .. ' ./' .. PYTHON_FILE_GET_FILE_HISTORY ..  ' --offset_hour ' .. offset_hour .. ' --db_path ' .. DATA_DIR_PATH .. DATA_DB_FILENAME
     local job_read_all_file_history = vim.fn.jobstart(
@@ -177,6 +211,25 @@ local function read_all_file_history (main_file_history_win, offset_hour)
 	}
     )
     vim.fn.jobwait({job_read_all_file_history}, -1)
+end
+
+
+local function read_cwd_list_history (main_cwd_history_win, offset_hour)
+    local cmd_to_run = ' ' .. PYTHON_MAIN_CMD .. ' ./' .. PYTHON_FILE_GET_CWD_LIST_HISTORY ..  ' --offset_hour ' .. offset_hour .. ' --db_path ' .. DATA_DIR_PATH .. DATA_DB_FILENAME
+    local job_read_cwd_list_history = vim.fn.jobstart(
+	cmd_to_run,
+	{
+	    stdout_buffered = true,
+	    cwd = PYTHON_PATH_SCRIPT,
+	    on_stdout = function (chanid, data, name)
+		local arr_data = {data[1]}
+		CWD_LIST_HISTORY_DATA = vim.fn.json_decode(arr_data[1])
+
+		update_cwd_list_history(main_cwd_history_win)
+	    end,
+	}
+    )
+    vim.fn.jobwait({job_read_cwd_list_history}, -1)
 end
 
 
@@ -404,6 +457,80 @@ function ret_func.show_all_file_history(user_settings)
 
     check_db_table_exists()
     read_all_file_history(main_file_history_win, user_settings.offset_hour)
+end
+
+
+function ret_func.show_open_cwd_history(user_settings)
+    local user_curr_focused_win = vim.fn.win_getid()
+
+    local main_cwd_history_win = create_floating_windows(
+        {},
+        {
+            title = 'CWD History',
+            relative = "editor",
+            focusable = true,
+            width = 200,
+            height = 32,
+            row = 5,
+            col = 10,
+            style = "minimal",
+            border = 'single',
+        },
+        true,
+        true
+    )
+
+    local all_floating_window_id = {}
+    table.insert(all_floating_window_id, main_cwd_history_win)
+
+    local autocmd_id_enter_buf = vim.api.nvim_create_autocmd(
+	"BufEnter",
+	{
+	    group = file_info_records_augroup,
+	    callback = function ()
+		if is_current_window_in_table_win_list(all_floating_window_id) == false then
+		    vim.api.nvim_set_current_win(user_curr_focused_win)
+		    remove_autocmd_group(file_info_records_augroup)
+		    close_all_floating_window(all_floating_window_id)
+		end
+	    end
+	}
+    )
+
+    local buf_cmd_close_window = '<Cmd>lua vim.api.nvim_set_current_win(' .. user_curr_focused_win .. '); <CR>'
+    for _, value in ipairs(all_floating_window_id) do
+	vim.api.nvim_buf_set_keymap(value.bufnr, 'n', user_settings.exit_note_window, buf_cmd_close_window, {noremap = true, silent = true})
+    end
+
+    vim.keymap.set('n', user_settings.new_tab_cwd,
+	function ()
+            local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+            local current_buf_line_str = vim.api.nvim_buf_get_lines(main_cwd_history_win.bufnr, row-1, row, false)
+            if string.sub(current_buf_line_str[1], 1, 2) == "++" then
+                local split_str = custom_split_string(current_buf_line_str[1], '|', true)
+                local cwd_selected = custom_trim(split_str[4])
+                print("cwd_selected: " .. cwd_selected)
+
+                local curr_os_name = vim.loop.os_uname().sysname
+                if curr_os_name == 'Windows_NT' then
+                    local cmd_to_run = 'wt.exe -w 0 nt -d "' .. cwd_selected .. '" powershell.exe -NoExit -Command "' .. user_settings.editor_cmd_open_current_cwd .. '"'
+                    local windows_terminal_new_tab = vim.fn.jobstart(
+                        cmd_to_run,
+                        {
+                            stdout_buffered = true,
+                        }
+                    )
+                end
+            else
+                print("Please select valid line")
+            end
+
+
+	end
+    )
+
+    check_db_table_exists()
+    read_cwd_list_history(main_cwd_history_win, user_settings.offset_hour)
 end
 
 
