@@ -98,6 +98,10 @@ end
 
 local function update_file_history_list(main_file_history_win, filter_string)
     local data_list = {}
+    local id_str_length = 4
+    local date_str_length = 19
+    local cwd_str_length = 110
+    local rel_file_path_str_length = 50
     for _, values in ipairs(ALL_FILE_HISTORY_DATA.data) do
 	if filter_string then
 	    -- TODO: Add filter string
@@ -105,10 +109,12 @@ local function update_file_history_list(main_file_history_win, filter_string)
 		table.insert(data_list, values.CreatedTimestamp .. " | " .. values.RelativeFilePath)
 	    end
 	else
-            local disp_id = normalize_string_length(tostring(values.Id), 4)
-	    local disp_relative_file_path = normalize_string_length(values.RelativeFilePath, 50)
-	    local disp_current_working_dir = normalize_string_length(values.CurrentWorkingDir, 110)
-	    table.insert(data_list,disp_id .. " | " .. values.CreatedTimestamp .. " | " .. disp_current_working_dir .. " | " .. disp_relative_file_path .. " |")
+            local disp_id = normalize_string_length(tostring(values.Id), id_str_length)
+            local disp_date = normalize_string_length(tostring(values.CreatedTimestamp), date_str_length)
+            local disp_current_working_dir = normalize_string_length(values.CurrentWorkingDir, cwd_str_length)
+            local disp_relative_file_path = normalize_string_length(values.RelativeFilePath, rel_file_path_str_length)
+
+            table.insert(data_list,disp_id .. " | " .. disp_date .. " | " .. disp_current_working_dir .. " | " .. disp_relative_file_path .. " |")
 	end
     end
 
@@ -122,6 +128,36 @@ local function update_file_history_list(main_file_history_win, filter_string)
         vim.api.nvim_buf_set_option(main_file_history_win.bufnr, 'readonly', true)
     end
 
+    vim.api.nvim_set_hl(0, "custom_all_file_history_view_column_id", {fg = "#99FF33"})
+    vim.api.nvim_set_hl(0, "custom_all_file_history_view_column_date", {fg = "#3399FF"})
+    vim.api.nvim_set_hl(0, "custom_all_file_history_view_column_cwd", {fg = "#f45eff"})
+    vim.api.nvim_set_hl(0, "custom_all_file_history_view_column_rel_file_path", {fg = "#ff4f95"})
+
+    local buffer_lines = vim.api.nvim_buf_line_count(main_file_history_win.bufnr)
+    local id_str_pos = {
+        start_pos = 0,
+        end_pos = id_str_length,
+    }
+
+    local date_str_pos = {
+        start_pos = id_str_length + 3,
+        end_pos = id_str_length + 3 + date_str_length,
+    }
+    local cwd_str_pos = {
+        start_pos = id_str_length + 3 + date_str_length + 3,
+        end_pos = id_str_length + 3 + date_str_length + 3 + cwd_str_length,
+    }
+    local rel_file_path_str_pos = {
+        start_pos = id_str_length + 3 + date_str_length + 3 + cwd_str_length + 3,
+        end_pos = id_str_length + 3 + date_str_length + 3 + cwd_str_length + 3 + rel_file_path_str_length,
+    }
+
+    for current_line = 0, buffer_lines - 1 do
+        vim.api.nvim_buf_add_highlight(main_file_history_win.bufnr, 0, "custom_all_file_history_view_column_id", current_line, id_str_pos.start_pos, id_str_pos.end_pos)
+        vim.api.nvim_buf_add_highlight(main_file_history_win.bufnr, 0, "custom_all_file_history_view_column_date", current_line, date_str_pos.start_pos, date_str_pos.end_pos)
+        vim.api.nvim_buf_add_highlight(main_file_history_win.bufnr, 0, "custom_all_file_history_view_column_cwd", current_line, cwd_str_pos.start_pos, cwd_str_pos.end_pos)
+        vim.api.nvim_buf_add_highlight(main_file_history_win.bufnr, 0, "custom_all_file_history_view_column_rel_file_path", current_line, rel_file_path_str_pos.start_pos, rel_file_path_str_pos.end_pos)
+    end
 end
 
 
