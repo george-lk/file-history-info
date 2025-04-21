@@ -16,6 +16,15 @@ cursor = conn.cursor()
 cursor.execute(f'''
     SELECT
         row_number() OVER () AS id,
+        case grp.DayName
+            when 0 then 'Sunday'
+            when 1 then 'Monday'
+            when 2 then 'Tuesday'
+            when 3 then 'Wednesday'
+            when 4 then 'Thursday'
+            when 5 then 'Friday'
+            else 'Saturday'
+        end as DayName,
         grp.Date,
         grp.LatestCreatedTimestampInt,
         grp.LatestOpenTime,
@@ -25,6 +34,7 @@ cursor.execute(f'''
     (
         SELECT
             fh.CreatedTimestamp as Date,
+            cast(strftime("%w", max(fh.CreatedTimestampInt) + ({OFFSET_HOUR} * 3600), 'unixepoch') as integer) as DayName,
             max(fh.CreatedTimestampInt) as LatestCreatedTimestampInt,
             strftime("%Y-%m-%d %H:%M:%S", max(fh.CreatedTimestampInt) + ({OFFSET_HOUR} * 3600), 'unixepoch') as LatestOpenTime,
             count(fh.CreatedTimestampInt) as FileOpenCount,
@@ -49,11 +59,12 @@ data_load = []
 for row in all_data_list:
     temp_data = {
         'Id': row[0],
-        'Date': row[1],
-        'LatestCreatedTimestampInt': row[2],
-        'LatestOpenTime': row[3],
-        'FileOpenCount': row[4],
-        'CurrentWorkingDir': row[5],
+        'DayName': row[1],
+        'Date': row[2],
+        'LatestCreatedTimestampInt': row[3],
+        'LatestOpenTime': row[4],
+        'FileOpenCount': row[5],
+        'CurrentWorkingDir': row[6],
     }
     data_load.append(temp_data)
 

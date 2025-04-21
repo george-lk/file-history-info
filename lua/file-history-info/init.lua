@@ -181,7 +181,7 @@ local function update_cwd_list_history(main_cwd_history_win)
                 table.insert(data_list, "")
                 table.insert(data_list, "")
             end
-            table.insert(data_list, "-- " .. values.Date)
+            table.insert(data_list, "-- " .. values.Date .. " (" .. values.DayName .. ")")
             current_date_sel = values.Date
         end
 
