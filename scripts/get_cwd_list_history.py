@@ -15,6 +15,7 @@ cursor = conn.cursor()
 
 cursor.execute(f'''
     SELECT
+        row_number() OVER () AS id,
         grp.Date,
         grp.LatestCreatedTimestampInt,
         grp.LatestOpenTime,
@@ -37,8 +38,9 @@ cursor.execute(f'''
             FROM FileReadHistory
         ) fh
         GROUP BY fh.CreatedTimestamp, fh.CurrentWorkingDir
+        ORDER BY fh.CreatedTimestamp DESC, fh.CreatedTimestampInt DESC
     ) grp
-    ORDER BY grp.Date DESC, grp.LatestOpenTime DESC'''
+'''
 )
 
 all_data_list = cursor.fetchall()
@@ -46,11 +48,12 @@ all_data_list = cursor.fetchall()
 data_load = []
 for row in all_data_list:
     temp_data = {
-        'Date': row[0],
-        'LatestCreatedTimestampInt': row[1],
-        'LatestOpenTime': row[2],
-        'FileOpenCount': row[3],
-        'CurrentWorkingDir': row[4],
+        'Id': row[0],
+        'Date': row[1],
+        'LatestCreatedTimestampInt': row[2],
+        'LatestOpenTime': row[3],
+        'FileOpenCount': row[4],
+        'CurrentWorkingDir': row[5],
     }
     data_load.append(temp_data)
 

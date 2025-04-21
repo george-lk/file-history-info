@@ -165,11 +165,13 @@ end
 
 local function update_cwd_list_history(main_cwd_history_win)
     local data_list = {}
+    local id_str_length = 3
     local latest_open_time_str_length = 19
     local file_open_count_str_length = 3
     local cwd_str_length = 110
     local current_date_sel = ""
     for _, values in ipairs(CWD_LIST_HISTORY_DATA.data) do
+        local disp_id = normalize_string_length(tostring(values.Id), id_str_length)
         local disp_latest_open_time = normalize_string_length(values.LatestOpenTime, latest_open_time_str_length)
         local disp_file_open_count = normalize_string_length(tostring(values.FileOpenCount), file_open_count_str_length)
         local disp_current_working_directory = normalize_string_length(values.CurrentWorkingDir, cwd_str_length)
@@ -183,7 +185,7 @@ local function update_cwd_list_history(main_cwd_history_win)
             current_date_sel = values.Date
         end
 
-        table.insert(data_list, "++ | " .. disp_latest_open_time .. " | " .. disp_file_open_count .. " | " .. disp_current_working_directory)
+        table.insert(data_list, "++ | " .. disp_id .. " | " .. disp_latest_open_time .. " | " .. disp_file_open_count .. " | " .. disp_current_working_directory)
     end
 
     if main_cwd_history_win.bufnr_read_only == true then
@@ -208,23 +210,28 @@ local function update_cwd_list_history(main_cwd_history_win)
         start_pos = 0,
         end_pos = 2,
     }
-    local latest_open_time_str_pos = {
+    local id_str_pos = {
         start_pos = 5,
-        end_pos = 5 + latest_open_time_str_length,
+        end_pos = 5 + id_str_length
+    }
+    local latest_open_time_str_pos = {
+        start_pos = 5 + id_str_length + 3,
+        end_pos = 5 + id_str_length + 3 + latest_open_time_str_length,
     }
     local file_open_count_str_pos = {
-        start_pos = 5 + latest_open_time_str_length + 3,
-        end_pos = 5 + latest_open_time_str_length + 3 + file_open_count_str_length,
+        start_pos = 5 + id_str_length + 3 + latest_open_time_str_length + 3,
+        end_pos = 5 + id_str_length + 3 + latest_open_time_str_length + 3 + file_open_count_str_length,
     }
     local cwd_str_pos = {
-        start_pos = 5 + latest_open_time_str_length + 3 + file_open_count_str_length + 3,
-        end_pos = 5 + latest_open_time_str_length + 3 + file_open_count_str_length + 3 + cwd_str_length,
+        start_pos = 5 + id_str_length + 3 + latest_open_time_str_length + 3 + file_open_count_str_length + 3,
+        end_pos = 5 + id_str_length + 3 + latest_open_time_str_length + 3 + file_open_count_str_length + 3 + cwd_str_length,
     }
 
     for current_line = 0, buffer_lines - 1 do
         local eval_buf_line_str = vim.api.nvim_buf_get_lines(main_cwd_history_win.bufnr, current_line, current_line + 1, false)
         if string.sub(eval_buf_line_str[1], 1, 2) == "++" then
             vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_label", current_line, label_str_pos.start_pos, label_str_pos.end_pos)
+            vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_label", current_line, id_str_pos.start_pos, id_str_pos.end_pos)
             vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_latest_open_time", current_line, latest_open_time_str_pos.start_pos, latest_open_time_str_pos.end_pos)
             vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_file_open_count", current_line, file_open_count_str_pos.start_pos, file_open_count_str_pos.end_pos)
             vim.api.nvim_buf_add_highlight(main_cwd_history_win.bufnr, 0, "custom_cwd_list_history_view_column_cwd", current_line, cwd_str_pos.start_pos, cwd_str_pos.end_pos)
@@ -548,7 +555,16 @@ function ret_func.show_open_cwd_history(user_settings)
             local current_buf_line_str = vim.api.nvim_buf_get_lines(main_cwd_history_win.bufnr, row-1, row, false)
             if string.sub(current_buf_line_str[1], 1, 2) == "++" then
                 local split_str = custom_split_string(current_buf_line_str[1], '|', true)
-                local cwd_selected = custom_trim(split_str[4])
+                local cwd_selected = ''
+                local current_id_str = custom_trim(split_str[2])
+                local current_selected_id = tonumber(current_id_str)
+                for _, values in ipairs(CWD_LIST_HISTORY_DATA.data) do
+                    if values.Id == current_selected_id then
+                        cwd_selected = values.CurrentWorkingDir
+                        break
+                    end
+                end
+
                 print("cwd_selected: " .. cwd_selected)
 
                 local curr_os_name = vim.loop.os_uname().sysname
