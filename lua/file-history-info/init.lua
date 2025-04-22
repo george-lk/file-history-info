@@ -452,9 +452,13 @@ function ret_func.show_all_file_history(user_settings)
 	}
     )
 
-    local buf_cmd_close_window = '<Cmd>lua vim.api.nvim_set_current_win(' .. user_curr_focused_win .. '); <CR>'
     for _, value in ipairs(all_floating_window_id) do
-	vim.api.nvim_buf_set_keymap(value.bufnr, 'n', user_settings.exit_note_window, buf_cmd_close_window, {noremap = true, silent = true})
+        vim.keymap.set('n', user_settings.exit_note_window,
+            function()
+                vim.api.nvim_set_current_win(user_curr_focused_win)
+            end,
+            {buffer = value.bufnr}
+        )
     end
 
     vim.keymap.set('n', user_settings.open_cwd,
@@ -472,7 +476,8 @@ function ret_func.show_all_file_history(user_settings)
             end
             vim.api.nvim_set_current_dir(selected_cwd)
             vim.api.nvim_set_current_win(user_curr_focused_win);
-	end
+        end,
+        {buffer = main_file_history_win.bufnr}
     )
 
     vim.keymap.set('n', user_settings.new_tab_cwd,
@@ -499,7 +504,8 @@ function ret_func.show_all_file_history(user_settings)
                     }
                 )
             end
-	end
+        end,
+        {buffer = main_file_history_win.bufnr}
     )
 
     check_db_table_exists()
@@ -544,9 +550,13 @@ function ret_func.show_open_cwd_history(user_settings)
 	}
     )
 
-    local buf_cmd_close_window = '<Cmd>lua vim.api.nvim_set_current_win(' .. user_curr_focused_win .. '); <CR>'
     for _, value in ipairs(all_floating_window_id) do
-	vim.api.nvim_buf_set_keymap(value.bufnr, 'n', user_settings.exit_note_window, buf_cmd_close_window, {noremap = true, silent = true})
+        vim.keymap.set('n', user_settings.exit_note_window,
+            function()
+                vim.api.nvim_set_current_win(user_curr_focused_win)
+            end,
+            {buffer = value.bufnr}
+        )
     end
 
     vim.keymap.set('n', user_settings.new_tab_cwd,
@@ -580,9 +590,8 @@ function ret_func.show_open_cwd_history(user_settings)
             else
                 print("Please select valid line")
             end
-
-
-	end
+        end,
+        {buffer = main_cwd_history_win.bufnr}
     )
 
     check_db_table_exists()
