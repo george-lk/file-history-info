@@ -4,6 +4,7 @@ local ret_func = {}
 local file_info_records_augroup = vim.api.nvim_create_augroup("custom_file_info_augroup", {clear = true})
 ALL_FILE_HISTORY_DATA = {}
 CWD_LIST_HISTORY_DATA = {}
+FILE_HISTORY_FOR_CURR_CWD_DATA = {}
 
 local OS_FILE_SEP = package.config:sub(1, 1)
 local PYTHON_PATH_SCRIPT = string.sub(debug.getinfo(1).source, 2, string.len('/lua/file-history-info/init.lua') * -1 ) .. 'scripts' .. OS_FILE_SEP
@@ -14,6 +15,7 @@ local PYTHON_FILE_ADD_NEW_FILE_INFO = 'add_new_file_info.py'
 local PYTHON_FILE_CHECK_DB = 'check_db_table.py'
 local PYTHON_FILE_GET_FILE_HISTORY = 'get_all_file_history.py'
 local PYTHON_FILE_GET_CWD_LIST_HISTORY = 'get_cwd_list_history.py'
+local PYTHON_FILE_GET_FILE_HISTORY_FOR_CURR_CWD = 'get_file_history_for_cwd.py'
 local DATA_DB_FILENAME = 'data_storage.db'
 
 
@@ -241,6 +243,84 @@ local function update_cwd_list_history(main_cwd_history_win)
     end
 end
 
+local function display_file_history_for_curr_cwd_data(main_file_history_curr_cwd_win)
+    local data_list = {}
+    local id_str_length = 3
+    local latest_open_time_str_length = 19
+    local file_open_count_str_length = 3
+    local relative_file_path_str_length = 110
+    local current_date_sel = ""
+
+    for _, values in ipairs(FILE_HISTORY_FOR_CURR_CWD_DATA.data) do
+        local disp_id = normalize_string_length(tostring(values.Id), id_str_length)
+        local disp_latest_open_time = normalize_string_length(values.LatestOpenTime, latest_open_time_str_length)
+        local disp_file_open_count = normalize_string_length(tostring(values.FileOpenCount), file_open_count_str_length)
+        local disp_relative_file_path = normalize_string_length(values.RelativeFilePath, relative_file_path_str_length)
+
+        if values.Date ~= current_date_sel then
+            if current_date_sel ~= "" then
+                table.insert(data_list, "")
+                table.insert(data_list, "")
+            end
+            table.insert(data_list, "-- " .. values.Date .. " (" .. values.DayName .. ")")
+            current_date_sel = values.Date
+        end
+
+        table.insert(data_list, "++ | " .. disp_id .. " | " .. disp_latest_open_time .. " | " .. disp_file_open_count .. " | " .. disp_relative_file_path)
+    end
+
+    if main_file_history_curr_cwd_win.bufnr_read_only == true then
+        vim.api.nvim_buf_set_option(main_file_history_curr_cwd_win.bufnr, 'modifiable', true)
+        vim.api.nvim_buf_set_option(main_file_history_curr_cwd_win.bufnr, 'readonly', false)
+    end
+    vim.api.nvim_buf_set_lines(main_file_history_curr_cwd_win.bufnr, 0, -1, false, data_list)
+    if main_file_history_curr_cwd_win.bufnr_read_only == true then
+        vim.api.nvim_buf_set_option(main_file_history_curr_cwd_win.bufnr, 'modifiable', false)
+        vim.api.nvim_buf_set_option(main_file_history_curr_cwd_win.bufnr, 'readonly', true)
+    end
+
+    vim.api.nvim_set_hl(0, "custom_file_history_for_curr_cwd_view_column_latest_open_time", {fg = "#99FF33"})
+    vim.api.nvim_set_hl(0, "custom_file_history_for_curr_cwd_view_column_file_open_count", {fg = "#3399FF"})
+    vim.api.nvim_set_hl(0, "custom_file_history_for_curr_cwd_view_column_relative_file_path", {fg = "#f59842"})
+    vim.api.nvim_set_hl(0, "custom_file_history_for_curr_cwd_view_column_label", {fg = "#c4c4c4"})
+
+    vim.api.nvim_set_hl(0, "custom_file_history_for_curr_cwd_view_header_date", {fg = "#c4c4c4"})
+
+    local buffer_lines = vim.api.nvim_buf_line_count(main_file_history_curr_cwd_win.bufnr)
+    local label_str_pos = {
+        start_pos = 0,
+        end_pos = 2,
+    }
+    local id_str_pos = {
+        start_pos = 5,
+        end_pos = 5 + id_str_length
+    }
+    local latest_open_time_str_pos = {
+        start_pos = 5 + id_str_length + 3,
+        end_pos = 5 + id_str_length + 3 + latest_open_time_str_length,
+    }
+    local file_open_count_str_pos = {
+        start_pos = 5 + id_str_length + 3 + latest_open_time_str_length + 3,
+        end_pos = 5 + id_str_length + 3 + latest_open_time_str_length + 3 + file_open_count_str_length,
+    }
+    local relative_file_path_str_pos = {
+        start_pos = 5 + id_str_length + 3 + latest_open_time_str_length + 3 + file_open_count_str_length + 3,
+        end_pos = 5 + id_str_length + 3 + latest_open_time_str_length + 3 + file_open_count_str_length + 3 + relative_file_path_str_length,
+    }
+
+    for current_line = 0, buffer_lines - 1 do
+        local eval_buf_line_str = vim.api.nvim_buf_get_lines(main_file_history_curr_cwd_win.bufnr, current_line, current_line + 1, false)
+        if string.sub(eval_buf_line_str[1], 1, 2) == "++" then
+            vim.api.nvim_buf_add_highlight(main_file_history_curr_cwd_win.bufnr, 0, "custom_file_history_for_curr_cwd_view_column_label", current_line, label_str_pos.start_pos, label_str_pos.end_pos)
+            vim.api.nvim_buf_add_highlight(main_file_history_curr_cwd_win.bufnr, 0, "custom_file_history_for_curr_cwd_view_column_label", current_line, id_str_pos.start_pos, id_str_pos.end_pos)
+            vim.api.nvim_buf_add_highlight(main_file_history_curr_cwd_win.bufnr, 0, "custom_file_history_for_curr_cwd_view_column_latest_open_time", current_line, latest_open_time_str_pos.start_pos, latest_open_time_str_pos.end_pos)
+            vim.api.nvim_buf_add_highlight(main_file_history_curr_cwd_win.bufnr, 0, "custom_file_history_for_curr_cwd_view_column_file_open_count", current_line, file_open_count_str_pos.start_pos, file_open_count_str_pos.end_pos)
+            vim.api.nvim_buf_add_highlight(main_file_history_curr_cwd_win.bufnr, 0, "custom_file_history_for_curr_cwd_view_column_relative_file_path", current_line, relative_file_path_str_pos.start_pos, relative_file_path_str_pos.end_pos)
+        elseif string.sub(eval_buf_line_str[1], 1, 2) == "--" then
+            vim.api.nvim_buf_add_highlight(main_file_history_curr_cwd_win.bufnr, 0, "custom_file_history_for_curr_cwd_view_header_date", current_line, 0, -1)
+        end
+    end
+end
 
 local function read_all_file_history (main_file_history_win, offset_hour)
     local cmd_to_run = ' ' .. PYTHON_MAIN_CMD .. ' ./' .. PYTHON_FILE_GET_FILE_HISTORY ..  ' --offset_hour ' .. offset_hour .. ' --db_path ' .. DATA_DIR_PATH .. DATA_DB_FILENAME
@@ -278,6 +358,26 @@ local function read_cwd_list_history (main_cwd_history_win, offset_hour)
     )
     vim.fn.jobwait({job_read_cwd_list_history}, -1)
 end
+
+
+local function read_file_history_for_curr_cwd(main_file_history_curr_cwd_win, curr_cwd_path, offset_hour)
+    local cmd_to_run = ' ' .. PYTHON_MAIN_CMD .. ' ./' .. PYTHON_FILE_GET_FILE_HISTORY_FOR_CURR_CWD ..  ' --offset_hour ' .. offset_hour .. ' --db_path ' .. DATA_DIR_PATH .. DATA_DB_FILENAME .. ' --cwd_path ' .. curr_cwd_path
+    local job_read_file_history_for_curr_cwd = vim.fn.jobstart(
+	cmd_to_run,
+	{
+	    stdout_buffered = true,
+	    cwd = PYTHON_PATH_SCRIPT,
+	    on_stdout = function (chanid, data, name)
+		local arr_data = {data[1]}
+		FILE_HISTORY_FOR_CURR_CWD_DATA = vim.fn.json_decode(arr_data[1])
+
+		display_file_history_for_curr_cwd_data(main_file_history_curr_cwd_win)
+	    end,
+	}
+    )
+    vim.fn.jobwait({job_read_file_history_for_curr_cwd}, -1)
+end
+
 
 
 local function add_new_file_info (full_file_path, relative_file_path, current_working_dir, git_top_level_path, git_repo_remote_url)
@@ -513,7 +613,7 @@ function ret_func.show_all_file_history(user_settings)
 end
 
 
-function ret_func.show_open_cwd_history(user_settings)
+function ret_func.show_opened_cwd_history(user_settings)
     local user_curr_focused_win = vim.fn.win_getid()
 
     local main_cwd_history_win = create_floating_windows(
@@ -596,6 +696,60 @@ function ret_func.show_open_cwd_history(user_settings)
 
     check_db_table_exists()
     read_cwd_list_history(main_cwd_history_win, user_settings.offset_hour)
+end
+
+
+function ret_func.show_file_history_for_current_cwd(user_settings)
+    local user_curr_focused_win = vim.fn.win_getid()
+
+    local main_file_history_curr_cwd_win = create_floating_windows(
+        {},
+        {
+            title = 'Current CWD - File History',
+            relative = "editor",
+            focusable = true,
+            width = 200,
+            height = 32,
+            row = 5,
+            col = 10,
+            style = "minimal",
+            border = 'single',
+        },
+        true,
+        true
+    )
+
+    local all_floating_window_id = {}
+    table.insert(all_floating_window_id, main_file_history_curr_cwd_win)
+
+    local autocmd_id_enter_buf = vim.api.nvim_create_autocmd(
+	"BufEnter",
+	{
+	    group = file_info_records_augroup,
+	    callback = function ()
+		if is_current_window_in_table_win_list(all_floating_window_id) == false then
+		    vim.api.nvim_set_current_win(user_curr_focused_win)
+		    remove_autocmd_group(file_info_records_augroup)
+		    close_all_floating_window(all_floating_window_id)
+		end
+	    end
+	}
+    )
+
+    for _, value in ipairs(all_floating_window_id) do
+        vim.keymap.set('n', user_settings.exit_note_window,
+            function()
+                vim.api.nvim_set_current_win(user_curr_focused_win)
+            end,
+            {buffer = value.bufnr}
+        )
+    end
+
+    check_db_table_exists()
+
+    local current_working_dir = vim.fn.getcwd()
+    current_working_dir = current_working_dir:gsub("\\", "/")
+    read_file_history_for_curr_cwd(main_file_history_curr_cwd_win, current_working_dir, user_settings.offset_hour)
 end
 
 
