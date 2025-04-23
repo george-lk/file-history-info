@@ -736,6 +736,33 @@ function ret_func.show_file_history_for_current_cwd(user_settings)
 	}
     )
 
+    vim.keymap.set('n', user_settings.open_file,
+        function ()
+            local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+            local current_buf_line_str = vim.api.nvim_buf_get_lines(main_file_history_curr_cwd_win.bufnr, row-1, row, false)
+            if string.sub(current_buf_line_str[1], 1, 2) == "++" then
+                local split_str = custom_split_string(current_buf_line_str[1], '|', true)
+                local file_selected = ''
+                local current_id_str = custom_trim(split_str[2])
+                local current_selected_id = tonumber(current_id_str)
+                for _, values in ipairs(FILE_HISTORY_FOR_CURR_CWD_DATA.data) do
+                    if values.Id == current_selected_id then
+                        file_selected = values.RelativeFilePath
+                        break
+                    end
+                end
+
+                print("file_selected: " .. file_selected)
+
+                vim.api.nvim_set_current_win(user_curr_focused_win)
+                vim.cmd('e ' .. file_selected)
+            else
+                print("Please select valid line")
+            end
+        end,
+        {buffer = main_file_history_curr_cwd_win.bufnr }
+    )
+
     for _, value in ipairs(all_floating_window_id) do
         vim.keymap.set('n', user_settings.exit_note_window,
             function()
